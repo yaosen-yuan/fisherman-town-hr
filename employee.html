@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>漁人町 HR — 員工工作台</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --accent:#d4292e;--accent-hover:#b91c21;
+  --bg:#f7f4f2;--card:#fff;--text:#1a1614;--muted:#6b6560;--border:#e8e2de;
+  --success:#10b981;--warn:#f59e0b;--danger:#ef4444;
+}
+body{font-family:'Helvetica Neue','PingFang TC',Arial,sans-serif;background:var(--bg);color:var(--text);font-size:13px;min-height:100vh}
+/* TOPBAR */
+.topbar{background:var(--accent);padding:0 24px;display:flex;align-items:center;justify-content:space-between;height:56px;position:sticky;top:0;z-index:50;box-shadow:0 2px 8px rgba(212,41,46,.3)}
+.top-logo img{height:28px;width:auto;filter:brightness(0) invert(1);display:block}
+.top-user{display:flex;align-items:center;gap:10px}
+.top-name{color:rgba(255,255,255,.95);font-size:13px;font-weight:500}
+.top-company{color:rgba(255,255,255,.6);font-size:11px}
+.top-avatar{width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,.25);display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:700}
+.logout-btn{padding:6px 12px;border:1px solid rgba(255,255,255,.3);border-radius:7px;color:rgba(255,255,255,.85);background:transparent;cursor:pointer;font-size:12px;font-family:inherit;transition:.15s}
+.logout-btn:hover{background:rgba(255,255,255,.15)}
+/* NAV TABS */
+.nav-tabs{background:var(--card);border-bottom:1px solid var(--border);padding:0 24px;display:flex}
+.nav-tab{padding:14px 18px;font-size:13px;font-weight:500;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;transition:.15s;white-space:nowrap}
+.nav-tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+.nav-tab:hover:not(.active){color:var(--text)}
+/* CONTENT */
+.content{max-width:860px;margin:0 auto;padding:24px 20px;display:flex;flex-direction:column;gap:16px}
+/* CARDS */
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.card-header{padding:14px 18px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border)}
+.card-title{font-size:14px;font-weight:700}
+/* WELCOME */
+.welcome-card{background:var(--accent);border-radius:16px;padding:24px 28px;color:#fff;position:relative;overflow:hidden}
+.welcome-card::after{content:'漁人町';position:absolute;right:-10px;top:-10px;font-size:80px;font-weight:900;opacity:.08;letter-spacing:-2px;pointer-events:none}
+.welcome-greeting{font-size:20px;font-weight:700;margin-bottom:4px}
+.welcome-sub{font-size:13px;opacity:.8}
+.welcome-stats{display:flex;gap:12px;margin-top:18px}
+.welcome-stat{background:rgba(255,255,255,.15);border-radius:10px;padding:12px 16px;flex:1;text-align:center}
+.welcome-stat-val{font-size:22px;font-weight:800}
+.welcome-stat-label{font-size:11px;opacity:.75;margin-top:3px}
+/* SCHEDULE GRID */
+.week-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;padding:16px 18px}
+.day-cell{border-radius:10px;padding:10px 6px;text-align:center;border:1px solid var(--border);background:#fdf9f8}
+.day-cell.today{border-color:var(--accent);background:#fff1f1}
+.day-cell.weekend{opacity:.6}
+.day-name{font-size:10.5px;font-weight:600;color:var(--muted);margin-bottom:6px}
+.day-date{font-size:11px;color:var(--muted);margin-bottom:8px}
+.day-shift{font-size:11px;font-weight:600;padding:3px 6px;border-radius:5px}
+.shift-full{background:#d1fae5;color:#065f46}
+.shift-am{background:#dbeafe;color:#1d4ed8}
+.shift-pm{background:#fce7f3;color:#be185d}
+.shift-off{background:#f1f5f9;color:#94a3b8}
+.shift-holiday{background:#fef3c7;color:#92400e}
+.shift-none{color:#d1c9c5;font-size:10px}
+/* FORM */
+.leave-form{padding:18px}
+.form-row{margin-bottom:14px}
+.form-row label{display:block;font-size:12px;font-weight:600;color:var(--text);margin-bottom:6px}
+.form-row input,.form-row select,.form-row textarea{width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;background:#faf8f7;color:var(--text);outline:none;transition:.15s}
+.form-row input:focus,.form-row select:focus,.form-row textarea:focus{border-color:var(--accent);background:#fff}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.btn{padding:10px 20px;border-radius:8px;font-size:13px;cursor:pointer;border:none;font-weight:600;transition:.15s;font-family:inherit}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-primary:hover{background:var(--accent-hover)}
+.btn-primary:disabled{opacity:.6;cursor:not-allowed}
+/* TABLES */
+.leave-table{width:100%;border-collapse:collapse;font-size:12.5px}
+.leave-table th{background:var(--bg);padding:9px 14px;text-align:left;font-weight:600;color:var(--muted);font-size:11px;border-bottom:1px solid var(--border)}
+.leave-table td{padding:10px 14px;border-bottom:1px solid var(--border);vertical-align:middle}
+.leave-table tr:last-child td{border-bottom:none}
+.leave-table tr:hover td{background:#fdf9f8}
+.status-pill{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:10px;font-size:11px;font-weight:600}
+.s-pending{background:#fef3c7;color:#92400e}
+.s-approved{background:#d1fae5;color:#065f46}
+.s-rejected{background:#fee2e2;color:#991b1b}
+.dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;display:inline-block}
+.dot-pending{background:var(--warn)}
+.dot-approved{background:var(--success)}
+/* PAYROLL */
+.pay-line{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);font-size:13px}
+.pay-line:last-child{border-bottom:none;font-weight:700;font-size:15px}
+/* EMPTY */
+.empty{text-align:center;padding:40px 20px;color:var(--muted);font-size:13px}
+.empty-icon{font-size:32px;margin-bottom:10px}
+/* LOADING */
+#loading{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:200;flex-direction:column;gap:14px}
+.spinner{width:32px;height:32px;border:3px solid rgba(212,41,46,.15);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+/* TOAST */
+.toast{position:fixed;bottom:24px;right:24px;padding:12px 18px;border-radius:10px;font-size:13px;font-weight:500;color:#fff;z-index:300;opacity:0;transform:translateY(10px);transition:all .25s;pointer-events:none}
+.toast.show{opacity:1;transform:none}
+.toast-success{background:var(--success)}
+.toast-error{background:var(--danger)}
+</style>
+</head>
+<body>
+<div id="loading">
+  <div class="spinner"></div>
+  <div style="color:var(--muted);font-size:13px">載入中...</div>
+</div>
+<div id="app" style="display:none">
+  <div class="topbar">
+    <div class="top-logo"><img src="data:image/svg+xml;base64,PHN2ZyBpZD0i5ZyW5bGkXzEiIGRhdGEtbmFtZT0i5ZyW5bGkIDEiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgdmlld0JveD0iMCAwIDUxOS44OSAxODkuMzciPjxkZWZzPjxzdHlsZT4uY2xzLTF7ZmlsbDojM2UzYTM5O30uY2xzLTJ7ZmlsbDojZDQyOTJlO308L3N0eWxlPjwvZGVmcz48cGF0aCBjbGFzcz0iY2xzLTEiIGQ9Ik0yMzYuMTEsNDkuNDVsMi4zLTEuMkwyNDEsNDZhMy44MSwzLjgxLDAsMCwxLDMuMi0uNjYsMjkuNDEsMjkuNDEsMCwwLDEsNC4zNSwxLjA5LDkuMzcsOS4zNywwLDAsMSwyLjg4LDEuMjZBMTUuNzUsMTUuNzUsMCwwLDEsMjUzLjc3LDUwbDI1LjU5LTIuNjFjMi4zLDEuNTIsNC4yOSwyLjkyLDUuOTUsNC4xOUExMi4wNiwxMi4wNiwwLDAsMSwyODksNTUuODhhMy42OCwzLjY4LDAsMCwxLC40NCwyLjI5Yy0uMTIuNjUtLjY2LDEuMTYtMS42LDEuNTJhOS4wNiw5LjA2LDAsMCwxLTMuNzEuMTEsMTkuMDksMTkuMDksMCwwLDEtMy44NC0xLjA5bC00LjM1LDUuNzgsMy43MS0uNDRhOTQuMjgsOTQuMjgsMCwwLDEsNy41NSw1LjcycTMuNzIsMy4xMSw0LjIzLDUuMThjLjE3Ljg3LS4zMiwxLjYyLTEuNDcsMi4yM2wtMy40LDEuOFY5OC43MWMwLC41MS0uNDIsMS0xLjI4LDEuNDdzLTEuNjYuODktMi40MywxLjI2YTE1LjE1LDE1LjE1LDAsMCwxLTYuNTIsMS42OSw4LjI2LDguMjYsMCwwLDEtNS4zOC0yLjM1TDI0MiwxMDMuMDdhMy4zMiwzLjMyLDAsMCwxLTIuMjQsMS4wOSwxMS40NCwxMS40NCwwLDAsMS0zLjEzLS42NSwyOCwyOCwwLDAsMS00LjEtMS45MSwzLjEzLDMuMTMsMCwwLDEtMS43OS0yLjc4VjgyYTUuNjYsNS42NiwwLDAsMS0yLjM3LjU5LDMuOTEsMy45MSwwLDAsMS0yLS45MmwtLjY0LDIuNGExNjMuMDcsMTYzLjA3LDAsMCwxLTcuNTUsMjIuMTgsNjAuODYsNjAuODYsMCwwLDEtOS40NywxNS42NCwyMy44NywyMy44NywwLDAsMS00LjYxLDMuODEsMTAuMzIsMTAuMzIsMCwwLDEtNSwxLjg2LDIuNCwyLjQsMCwwLDEtMS43Mi0uNjYsNi41Miw2LjUyLDAsMCwxLTEuMjItMS41MiwxMC4wOCwxMC4wOCwwLDAsMS0uNjQtNi4yN2MuNDMtMi40NC45LTQuOTIsMS40MS03LjQ3YTUuMjIsNS4yMiwwLDAsMCwwLTEuNThxLS4xMy0uNy0uMzktMS44LDMuNzItLjg3LDctNWE1My4zMiw1My4zMiwwLDAsMCw2LjUzLTExLjEyTDE5Ny4zMyw4NWEyLjA4LDIuMDgsMCwwLDEtLjc3LTIuNjJBMTQuNTQsMTQuNTQsMCwwLDEsMTk4Ljg3LDc4YTE1LjgsMTUuOCwwLDAsMSwyLjg4LTNjMS4zMi0xLjEzLDIuMjQtMS41NSwyLjc1LTEuMjZsNC4zNSwyLjQsNi41Myw0LjM2LDItNy44NWE5MC41Myw5MC41MywwLDAsMC05LjIxLTkuMjYsNjYuMTYsNjYuMTYsMCwwLDAtNy42OC01Ljc4Yy0uNDMtLjI5LS42Ni0uNTQtLjctLjc2cy4xLS41MS40NS0uODhxMi40My0yLjcxLDYuMTQtNi4yMWMyLjQ3LTIuMzIsNC4xOC0zLjQ5LDUuMTItMy40OSwxLjctLjA3LDMuODYsMS40LDYuNDYsNC40MmE2MS40NSw2MS40NSwwLDAsMSw2LjA4LDguMTIsMzIuMjQsMzIuMjQsMCwwLDEsMi4zLDQuNDdjLjYsMS40NSwxLjExLDIuODcsMS41NCw0LjI1YTk0LjUzLDk0LjUzLDAsMCwwLDcuNjEtNi43NmMyLjI2LTIuMjUsMy41Ni00LjQsMy45LTYuNDNhMy40NywzLjQ3LDAsMCwwLS43LTIuODNBOC4xOCw4LjE4LDAsMCwwLDIzNi4xMSw0OS40NVptLTQuNDgsNTYuMjRhMTYsMTYsMCwwLDEsNi4xNCwxLjYzLDQuNDcsNC40NywwLDAsMSwyLjQzLDQuMjVxMCwzLjI3LTMuMDcsNy41OGEzNi42NywzNi42NywwLDAsMS02LjUzLDcuMTQsOC4zOSw4LjM5LDAsMCwxLTMuNTIsMS41Miw0LjczLDQuNzMsMCwwLDEtMy0uNTQsNy44NCw3Ljg0LDAsMCwxLTMuOTEtNC40MmMtLjgxLTIuMDctLjc0LTMuNTcuMi00LjUyYTMyLjQyLDMyLjQyLDAsMCwxLDMuMi0zLjE2LDY4LDY4LDAsMCwwLDUuMzctNS41NmMuNDMtLjU4Ljg1LTEuMiwxLjI4LTEuODVTMjMxLjEyLDEwNi40MSwyMzEuNjMsMTA1LjY5Wm05Ljg1LDMuNDhhNC4yMiw0LjIyLDAsMCwxLDMuNjUtMy43NSw3LDcsMCwwLDEsNS44MiwxLjksMTAuNjksMTAuNjksMCwwLDEsMy4xNCw1LjcyLDU0LjI2LDU0LjI2LDAsMCwxLDEuMzQsOC4zNCwxMi43OCwxMi43OCwwLDAsMS0uMTMsMy4yMiw0LjQ1LDQuNDUsMCwwLDEtMS40MSwyLjM0LDguMzksOC4zOSwwLDAsMS0zLjQ1LDEuNTMsMy4zNywzLjM3LDAsMCwxLTMuMi0uNjYsOS4xMSw5LjExLDAsMCwxLTEuOTItMi42MWMtLjUxLTEtMS4xMS0yLjE4LTEuNzktMy40OWE0Mi42OSw0Mi42OSwwLDAsMC0uMDctNy4xOUExMiwxMiwwLDAsMCwyNDEuNDgsMTA5LjE3Wm0xLjI4LTI2LjM3LDcuOTMtMS0uMTItNC4yNS03LjgxLDEuMDlabTAsMTAuNjgsOC4wNi0uODdWODguOWwtOC4wNi43NlpNMjQ1LjgzLDY4bDEzLjMxLTEuNzUsNi43OC05LjdMMjUyLjc0LDU4Yy0uODUsMS41Mi0yLDMuMjctMy4zMyw1LjIzUzI0Ni44Niw2Ni43NCwyNDUuODMsNjhabTE3LjQxLDU3LjMzLTQuMS01LjY3YTE0Ljk0LDE0Ljk0LDAsMCwwLS41MS01LjI5LDQ2LDQ2LDAsMCwwLTIuNTYtNyw3LjI3LDcuMjcsMCwwLDEsMi4xMS0yLjUxLDUuNTQsNS41NCwwLDAsMSwzLS4xcTUuMTIuNjUsNy4zNiw0LjI1YTI2LjQxLDI2LjQxLDAsMCwxLDMuMjYsOSwxMi43MSwxMi43MSwwLDAsMSwuMTksNS4xMyw3LjI2LDcuMjYsMCwwLDEtMi43NSwzLjcsMy40NiwzLjQ2LDAsMCwxLTMuMjYuNDlBNi4zNiw2LjM2LDAsMCwxLDI2My4yNCwxMjUuMzFabS4xMi00NS4yNCw2LjkxLS44N1Y3NS4yOGwtNi45MS43NlptMCwxMS4zNCw3LjE3LS43NlY4Ni4yOWwtNy4xNy44N1ptOC4zMiwxNS44YTEwLjc3LDEwLjc3LDAsMCwxLDUuMDYtMi40NSw4Ljg4LDguODgsMCwwLDEsNS40MywxLjE1LDI0LjM1LDI0LjM1LDAsMCwxLDUuMTksMy43NiwxOS4yNiwxOS4yNiwwLDAsMSwzLjc3LDQuODUsMTEuNTYsMTEuNTYsMCwwLDEsMS40Nyw1LjI4LDkuMjQsOS4yNCwwLDAsMS0xLjQ3LDUuMTgsNi44OSw2Ljg5LDAsMCwxLTIuMTEsMS45MSw1LjI3LDUuMjcsMCwwLDEtMi43NS44MSw2Ljc3LDYuNzcsMCwwLDEtMy45LTIuMTgsNDMuNjQsNDMuNjQsMCwwLDEtMy40LTMuNywxNS44OCwxNS44OCwwLDAsMC0xLjIxLTUsMjIuNzEsMjIuNzEsMCwwLDAtMy00LjhjLS4yNS0uMzYtLjgxLTEuMDctMS42Ni0yLjEzQTUuNTksNS41OSwwLDAsMSwyNzEuNjgsMTA3LjIxWiIvPjxwYXRoIGNsYXNzPSJjbHMtMSIgZD0iTTM4MC40MiwxMDIuNTRsLjg5LDIuNDUsMS4xLDUuMDljLjMsMS41MS41LDIuOC42MSwzLjg3YTE4LDE4LDAsMCwxLC4wNiwzLjEsOC4xLDguMSwwLDAsMS0uODMsMi4zNiwxMCwxMCwwLDAsMS0xLjYxLDIuMTcsNi41Miw2LjUyLDAsMCwxLTIuNzEsMS40Niw3LjE5LDcuMTksMCwwLDEtMi45MywwLDE0LjI4LDE0LjI4LDAsMCwxLTQuMzEtMS44NCwzMy4wOCwzMy4wOCwwLDAsMS00LjEtM3EtNy4yOS02LTEzLjk0LTEyLjUzdC0xNi0xNi4zMXEtMS41NSwxLjg5LTUsNlQzMjQsMTA0LjI5cS00LjIsNC43NS04LjY4LDkuMTRhNjQuODksNjQuODksMCwwLDEtOCw2LjgzLDE5LjY1LDE5LjY1LDAsMCwxLTQuMzcsMi4xNywzLjYxLDMuNjEsMCwwLDEtMi45NC0uMXEtMS41NS0uNzUtMi0zLjNhMTUuNDksMTUuNDksMCwwLDEtLjI4LTQuNjFjLjE1LTIuNDUuMjQtNC42NC4yOC02LjU1YTI1LjY5LDI1LjY5LDAsMCwwLS4xNy00LjIsMzEsMzEsMCwwLDAsMy43MS0yLjg3YzEuMTQtMSwyLjM0LTIuMjEsMy41OS0zLjUzbDYuNDItNi43OWExMjkuNjMsMTI5LjYzLDAsMCwwLDExLjY3LTE0LjMycTUuMzctNy42NCwxMy0xOWEyMC4wNSwyMC4wNSwwLDAsMSwzLjQzLTQuNDNjMS0uODEsMi41NC0xLjIyLDQuNzYtMS4yMmE5LjY0LDkuNjQsMCwwLDEsMi4yNy4xOSw2LjA2LDYuMDYsMCwwLDEsMS45MywxLjEzLDMzLjM3LDMzLjM3LDAsMCwxLDUuNyw1LjI4LDI3LjA3LDI3LjA3LDAsMCwxLDQsNi4zMSw2LjQsNi40LDAsMCwxLC4zMywzLjQ5LDMuNTQsMy41NCwwLDAsMS0yLDIuNTQsMy44OCwzLjg4LDAsMCwxLTIuNDkuMjgsMjYuOTMsMjYuOTMsMCwwLDEtMi45My0uOTRsLTQuMSw2LjEzcTksOS4xNCwxNS4zOCwxNS4yMWExMDEsMTAxLDAsMCwwLDEwLjg0LDkuMTksMTUsMTUsMCwwLDAsMy40MywxLjkzQTguNTcsOC41NywwLDAsMCwzODAuNDIsMTAyLjU0WiIvPjxwYXRoIGNsYXNzPSJjbHMtMSIgZD0iTTM5NS43OSw1NS4zM2wzMi05LjI2cTEuOTItLjY2LDUuNjMsMS41OGExNy4zNCwxNy4zNCwwLDAsMSw1LDRjMS4xMSwxLjc0LDEuMTgsMy4xOC4yLDQuM2E2Ljg3LDYuODcsMCwwLDAtMS43MywzcTkuMzMtMi45NCwxNC4yNy00LjQyYzMuMjgtMSw2LjI3LTEuODUsOC45NS0yLjYxYTYyLjEyLDYyLjEyLDAsMCwxLDYuNC0xLjUzYzEuNTgtLjI1LDIuNjMtLjIsMy4xNC4xNmwyLjgxLDIuNCwyLjY5LDIuODRxMS4yOCwxLjQxLDMuNjUsNC40N1Q0ODEuMTQsNjVhMy4wOCwzLjA4LDAsMCwxLS44OSwxLjkxYy0uNi42OS0xLjI0LDEuMzYtMS45MiwyTDQ3Niw3MC41OWMtLjY5LjQ0LTEuODguMjQtMy41OS0uNmEyNS45MiwyNS45MiwwLDAsMS00Ljg2LTMuMWwtNS43NiwxLjYzYTEwLjg2LDEwLjg2LDAsMCwxLDMuMjcsMi44Myw2LjEzLDYuMTMsMCwwLDEsMS4yMSwzLjcxdjM5LjQ2YTYuOTMsNi45MywwLDAsMS0xLjg1LDQuMTQsMjMuMywyMy4zLDAsMCwxLTQsMy45MkEyOSwyOSwwLDAsMSw0NDksMTI3LjEsMTEzLjc0LDExMy43NCwwLDAsMSw0MzUsMTI4LjQ3cS00Ljc0LTYuNDMtNy05LjdhMjIuMywyMi4zLDAsMCwwLTYuNDYtNiw3NS4yOCw3NS4yOCwwLDAsMCwxMC41Ni45MywzNy4zNSwzNy4zNSwwLDAsMCw5LjY2LTEuMTUsMTEuMjUsMTEuMjUsMCwwLDAsNC4xLTIsNC43OSw0Ljc5LDAsMCwwLDEuOTItMi42MVY3OC4zM2E4LjIsOC4yLDAsMCwwLS40NS0zLjExLDUuNTEsNS41MSwwLDAsMC0yLTIuMTJsLTguNTcsMi41LjEzLDIzYTEyLjU2LDEyLjU2LDAsMCwxLTIuNzUsNC40Nyw5LjM3LDkuMzcsMCwwLDEtNC44LDIuNCw3LjI4LDcuMjgsMCwwLDEtMy4yLS4zM2MtMS4yOC0uMzYtMS45Mi0uOC0xLjkyLTEuMzFsLS4xMy0yLjgzLTI0LjgyLDYuMzJhNS45NCw1Ljk0LDAsMCwxLTEuMDksMi40LDExLjA5LDExLjA5LDAsMCwxLTIuMzcsMi4xOGMtMS42Mi45NS0zLjY1LjY5LTYuMDgtLjc2cy0zLjY0LTIuOTEtMy42NC00LjM2VjYyLjg1YTYuNTMsNi41MywwLDAsMC0xLTMuMDUsOS41Niw5LjU2LDAsMCwwLTItMi42MnEzLjU4LTQuNTcsNi4yNy01LjI4QzM5MS4xOCw1MS40MywzOTMuMzIsNTIuNTcsMzk1Ljc5LDU1LjMzWm0zLjA3LDIwLjA2LDYuOTEtMi4wN1Y2NS43OWwtNi45MSwxLjg2Wm0uMzksMTkuNzIsNi41Mi0xLjg1Vjg0LjU0bC02LjUyLDJabTE4LjMtMjUuMDYsNi41Mi0yLC4xMy03Ljc0LTYuNjUsMS44NlptLjI1LDE5LjgzLDYuMjctMS43NFY3OWwtNi4xNCwxLjg2WiIvPjxwYXRoIGNsYXNzPSJjbHMtMSIgZD0iTTIwOS41NCwxNTUuNGExLjA1LDEuMDUsMCwwLDEtLjI4LS43NHYtMTRhMS4xMiwxLjEyLDAsMCwxLC4yOC0uNzYuOTIuOTIsMCwwLDEsLjctLjMyaDguMjhhLjg4Ljg4LDAsMCwxLC42Ni4zLDEsMSwwLDAsMSwuMjcuNzEsMSwxLDAsMCwxLS4yNy43LjkuOSwwLDAsMS0uNjYuMjhoLTdjLS4xNywwLS4yNS4xLS4yNS4yOHY0LjczaDYuNTNhLjg1Ljg1LDAsMCwxLC42Ni4zLDEsMSwwLDAsMSwuMjguNzEsMSwxLDAsMCwxLS4yOC43Ljg3Ljg3LDAsMCwxLS42Ni4yOGgtNi41M3Y2LjA5YTEsMSwwLDAsMS0uMy43NC45My45MywwLDAsMS0uNy4zMUEuOTEuOTEsMCwwLDEsMjA5LjU0LDE1NS40WiIvPjxwYXRoIGNsYXNzPSJjbHMtMSIgZD0iTTIyNi44NCwxNTUuNGExLjA1LDEuMDUsMCwwLDEtLjI4LS43NFYxNDAuNTRhMS4wOSwxLjA5LDAsMCwxLC4yOC0uNzUuOTMuOTMsMCwwLDEsMS40LDAsMS4wNywxLjA3LDAsMCwxLC4zLjc1djE0LjEyYTEsMSwwLDAsMS0uMy43NC45NS45NSwwLDAsMS0xLjQsMFoiLz48cGF0aCBjbGFzcz0iY2xzLTEiIGQ9Ik0yMzYuNjIsMTU0LjczYTEuMDYsMS4wNiwwLDAsMS0uNDMtLjM5LDEuMDgsMS4wOCwwLDAsMS0uMTktLjU3LDEsMSwwLDAsMSwuMjYtLjcuODIuODIsMCwwLDEsLjY0LS4yOS44NC44NCwwLDAsMSwuNC4wOSw5LjYyLDkuNjIsMCwwLDAsNC4yLjk0cTMuNywwLDMuNy0yLjYxYTEuNDQsMS40NCwwLDAsMC0uNDctMS4xMiwyLjg5LDIuODksMCwwLDAtMS4wNi0uNjhjLS40My0uMTctMS4xMy0uMzktMi4xMS0uNjdhMTkuMTcsMTkuMTcsMCwwLDEtMi43OS0uOTQsNC4yOCw0LjI4LDAsMCwxLTItMS40NywzLjgyLDMuODIsMCwwLDEtLjY1LTIuMjUsNC43Myw0LjczLDAsMCwxLC42My0yLjQsNC4yNyw0LjI3LDAsMCwxLDItMS43Miw2LjkxLDYuOTEsMCwwLDEsMi45NS0uNiwxMS40NywxMS40NywwLDAsMSw0LjI0Ljc2LjkzLjkzLDAsMCwxLC42MS45NCwxLDEsMCwwLDEtLjI1LjY3Ljc3Ljc3LDAsMCwxLS42Mi4zMS44Mi44MiwwLDAsMS0uMzQtLjA5LDkuODIsOS44MiwwLDAsMC0zLjQzLS42Miw0LjgyLDQuODIsMCwwLDAtMi43My42OSwyLjE3LDIuMTcsMCwwLDAtMSwxLjksMS42OSwxLjY5LDAsMCwwLC41MSwxLjMsMy42OCwzLjY4LDAsMCwwLDEuMTguNzgsMTQuNDksMTQuNDksMCwwLDAsMi4xLjY0LDE3LjQzLDE3LjQzLDAsMCwxLDIuNzMuODcsMy44OSwzLjg5LDAsMCwxLDIuNTEsMy44NCw0LjE5LDQuMTksMCwwLDEtLjY4LDIuMzEsNC41LDQuNSwwLDAsMS0xLjk1LDEuNjEsNi43Niw2Ljc2LDAsMCwxLTIuODQuNTZBMTEuOTQsMTEuOTQsMCwwLDEsMjM2LjYyLDE1NC43M1oiLz48cGF0aCBjbGFzcz0iY2xzLTEiIGQ9Ik0yNTQuNzQsMTU1LjRhMS4wNSwxLjA1LDAsMCwxLS4yOC0uNzRWMTQwLjU0YTEuMDksMS4wOSwwLDAsMSwuMjgtLjc1LjkyLjkyLDAsMCwxLC43LS4zMiwxLDEsMCwwLDEsLjcuMzIsMS4wNywxLjA3LDAsMCwxLC4zLjc1djYuMDdoOHYtNi4wN2ExLjEsMS4xLDAsMCwxLC4yOS0uNzUuOS45LDAsMCwxLC42OS0uMzIuOTQuOTQsMCwwLDEsLjcuMzIsMS4wNywxLjA3LDAsMCwxLC4zLjc1djE0LjEyYTEsMSwwLDAsMS0uMy43NC45My45MywwLDAsMS0uNy4zMS44OS44OSwwLDAsMS0uNjktLjMxLDEuMDYsMS4wNiwwLDAsMS0uMjktLjc0VjE0OC42aC04djYuMDZhMSwxLDAsMCwxLS4zLjc0Ljk0Ljk0LDAsMCwxLS43LjMxQS45MS45MSwwLDAsMSwyNTQuNzQsMTU1LjRaIi8+PHBhdGggY2xhc3M9ImNscy0xIiBkPSJNMjc1LjE3LDE1NS4yOWExLjA4LDEuMDgsMCwwLDEtLjI4LS43NVYxNDAuNjZhMS4xMiwxLjEyLDAsMCwxLC4yOC0uNzYuOS45LDAsMCwxLC42OS0uMzJoOC41NGEuODcuODcsMCwwLDEsLjY2LjMsMSwxLDAsMCwxLC4yOC43MSwxLDEsMCwwLDEtLjI4LjcuODguODgsMCwwLDEtLjY2LjI4aC03LjI4Yy0uMTcsMC0uMjUuMS0uMjUuMjh2NC43M2g2Ljc2YS44NS44NSwwLDAsMSwuNjYuMywxLDEsMCwwLDEsLjI4LjcxLDEsMSwwLDAsMS0uMjguNy44Ny44NywwLDAsMS0uNjYuMjhoLTYuNzZ2NC43NmMwLC4xOC4wOC4yOC4yNS4yOGg3LjI4YS44OS44OSwwLDAsMSwuNjYuMjksMSwxLDAsMCwxLC4yOC43MSwxLDEsMCwwLDEtLjI4LjcuODkuODksMCwwLDEtLjY2LjI5aC04LjU0QS45My45MywwLDAsMSwyNzUuMTcsMTU1LjI5WiIvPjxwYXRoIGNsYXNzPSJjbHMtMSIgZD0iTTMwMy44MywxNTAuM2E4LjUzLDguNTMsMCwwLDEsLjYyLDMuMzF2MWExLjA2LDEuMDYsMCwwLDEtLjI5Ljc0Ljg5Ljg5LDAsMCwxLS42OS4zMS45MS45MSwwLDAsMS0uNzItLjI5LDEsMSwwLDAsMS0uMjgtLjc2VjE1NGExMS44OCwxMS44OCwwLDAsMC0uMTktMi4xMywzLjI5LDMuMjksMCwwLDAtMS0xLjc3LDMsMywwLDAsMC0yLjEyLS43aC00LjM4djUuMjlhMSwxLDAsMCwxLS4zLjc0Ljk0Ljk0LDAsMCwxLS43LjMxLjkxLjkxLDAsMCwxLS43LS4zMSwxLjA1LDEuMDUsMCwwLDEtLjI4LS43NHYtMTRhMS4xMiwxLjEyLDAsMCwxLC4yOC0uNzYuOTIuOTIsMCwwLDEsLjctLjMyaDVhNi40OSw2LjQ5LDAsMCwxLDQuMywxLjI3LDQuMjEsNC4yMSwwLDAsMSwxLjUxLDMuNCw0LjU4LDQuNTgsMCwwLDEtLjcyLDIuNTIsNC4wNiw0LjA2LDAsMCwxLTIsMS42MkEzLjE1LDMuMTUsMCwwLDEsMzAzLjgzLDE1MC4zWm0tMi4yOS0zLjczYTIuNTQsMi41NCwwLDAsMCwxLjA2LTIuMTYsMi40NywyLjQ3LDAsMCwwLTEtMi4xMiw1LjQxLDUuNDEsMCwwLDAtMy4xMi0uNjloLTMuNDdjLS4xNywwLS4yNS4wOS0uMjUuMjd2NS40OWgzLjgzQTQuNzEsNC43MSwwLDAsMCwzMDEuNTQsMTQ2LjU3WiIvPjxwYXRoIGNsYXNzPSJjbHMtMSIgZD0iTTMxMi42MywxNTUuNGExLjA2LDEuMDYsMCwwLDEtLjI5LS43NFYxNDFhMS41NiwxLjU2LDAsMCwxLC40MS0xLjA3LDEuMjksMS4yOSwwLDAsMSwxLS40NmguN2ExLjI5LDEuMjksMCwwLDEsLjc2LjI2LDEuNzYsMS43NiwwLDAsMSwuNTYuNzJsNC42NCwxMi40NWMwLC4xLjEuMTYuMTcuMTZzLjEzLS4wNi4xNy0uMTZsNC42NC0xMi40NWExLjc0LDEuNzQsMCwwLDEsLjU1LS43MiwxLjMyLDEuMzIsMCwwLDEsLjc3LS4yNmguN2ExLjI5LDEuMjksMCwwLDEsMSwuNDYsMS41MiwxLjUyLDAsMCwxLC40MiwxLjA3djEzLjY2YTEuMDYsMS4wNiwwLDAsMS0uMjkuNzQuODkuODksMCwwLDEtLjY5LjMxLDEsMSwwLDAsMS0uNzEtLjMxLDEuMDYsMS4wNiwwLDAsMS0uMjktLjc0VjE0Mi41OGMwLS4xNCwwLS4yMS0uMTMtLjIxcy0uMTEsMC0uMTUuMTRMMzIyLDE1NC43M2ExLjYsMS42LDAsMCwxLS41NS43MSwxLjQyLDEuNDIsMCwwLDEtLjgzLjI3LDEuNCwxLjQsMCwwLDEtLjgzLS4yNywxLjYyLDEuNjIsMCwwLDEtLjU2LS43MWwtNC41OS0xMi4yMmMtLjA1LS4wOS0uMS0uMTQtLjE1LS4xNHMtLjEzLjA3LS4xMy4yMXYxMi4wOGExLDEsMCwwLDEtLjMuNzQuOTMuOTMsMCwwLDEtLjcuMzFBLjg5Ljg5LDAsMCwxLDMxMi42MywxNTUuNFoiLz48cGF0aCBjbGFzcz0iY2xzLTEiIGQ9Ik0zMzYuNTQsMTU1LjRhMS4xLDEuMSwwLDAsMS0uMjgtLjc0LDEuNTUsMS41NSwwLDAsMSwuMTEtLjQ2bDUuNDMtMTMuNzdhMS42NywxLjY3LDAsMCwxLC41MS0uNzEsMS4xNCwxLjE0LDAsMCwxLC43NC0uMjVoLjIxYTEuMTUsMS4xNSwwLDAsMSwuNzUuMjUsMS43NiwxLjc2LDAsMCwxLC41MS43MUwzNTAsMTU0LjJhMS41NSwxLjU1LDAsMCwxLC4xMS40NiwxLjEsMS4xLDAsMCwxLS4yOC43NC45LjksMCwwLDEtLjcuMzEsMSwxLDAsMCwxLS41Ny0uMTcsMS4xNiwxLjE2LDAsMCwxLS4zNy0uNDlsLTEuMzgtMy41NWgtNy4ybC0xLjM4LDMuNTVhMS4xNiwxLjE2LDAsMCwxLS4zNy40OSwxLDEsMCwwLDEtLjU3LjE3QS44OC44OCwwLDAsMSwzMzYuNTQsMTU1LjRabTYuNjItMTIuOTNjLS4wNywwLS4xMy4wNS0uMTcuMTZsLTIuNjgsNi45M0gzNDZsLTIuNjgtNi45M0MzNDMuMjksMTQyLjUyLDM0My4yMywxNDIuNDcsMzQzLjE2LDE0Mi40N1oiLz48cGF0aCBjbGFzcz0iY2xzLTEiIGQ9Ik0zNTcuMjgsMTU1LjRhMS4wNiwxLjA2LDAsMCwxLS4yOS0uNzR2LTkuODJhMS4wOCwxLjA4LDAsMCwxLC4yOS0uNzUuOS45LDAsMCwxLC42OS0uMzIuOTQuOTQsMCwwLDEsLjcuMzIsMS4wNSwxLjA1LDAsMCwxLC4zLjc1di44N2E3LDcsMCwwLDEsMS44MS0xLjUzLDQuMjUsNC4yNSwwLDAsMSwyLjEzLS41MiwzLjU4LDMuNTgsMCwwLDEsMi4wNi41OSwzLjgyLDMuODIsMCwwLDEsMS4zMSwxLjYyLDUuNTEsNS41MSwwLDAsMSwuNDYsMi4yOXY2LjVhMSwxLDAsMCwxLS4zLjc0LjkzLjkzLDAsMCwxLS43LjMxLjg5Ljg5LDAsMCwxLS42OS0uMzEsMS4wNiwxLjA2LDAsMCwxLS4yOS0uNzR2LTYuMjdjMC0xLjg0LS43Ny0yLjc3LTIuMzItMi43N2EzLjI2LDMuMjYsMCwwLDAtMS44NC41NSw3LjEsNy4xLDAsMCwwLTEuNjMsMS42MnY2Ljg3YTEsMSwwLDAsMS0uMy43NC45My45MywwLDAsMS0uNy4zMUEuODkuODksMCwwLDEsMzU3LjI4LDE1NS40WiIvPjxwYXRoIGNsYXNzPSJjbHMtMSIgZD0iTTM4OS4xOCwxNTUuNGExLjA2LDEuMDYsMCwwLDEtLjI5LS43NFYxNDEuNTdoLTQuMzJhLjg1Ljg1LDAsMCwxLS42NS0uMjgsMSwxLDAsMCwxLS4yNy0uNywxLDEsMCwwLDEsLjI3LS43MS44My44MywwLDAsMSwuNjUtLjNoMTAuNmEuODcuODcsMCwwLDEsLjY2LjMsMSwxLDAsMCwxLC4yOC43MSwxLDEsMCwwLDEtLjI4LjcuODguODgsMCwwLDEtLjY2LjI4aC00LjN2MTMuMDlhMSwxLDAsMCwxLS4zLjc0LjkzLjkzLDAsMCwxLS43LjMxQS44OS44OSwwLDAsMSwzODkuMTgsMTU1LjRaIi8+PHBhdGggY2xhc3M9ImNscy0xIiBkPSJNNDA0LjkxLDE1NC43N2E3LjA5LDcuMDksMCwwLDEtMi41OC0yLjkxLDkuOTEsOS45MSwwLDAsMSwwLTguNTMsNyw3LDAsMCwxLDIuNjEtMi45Miw3LjgyLDcuODIsMCwwLDEsNy44NiwwLDcuMTQsNy4xNCwwLDAsMSwyLjU5LDIuOTIsOS45Miw5LjkyLDAsMCwxLDEsNC4yNiw5LjcxLDkuNzEsMCwwLDEtLjk1LDQuMjMsNy4wNiw3LjA2LDAsMCwxLTIuNjMsMyw3LjI2LDcuMjYsMCwwLDEtMy45MSwxQTcuMzcsNy4zNywwLDAsMSw0MDQuOTEsMTU0Ljc3Wm02Ljg4LTEuNzZhNS4yLDUuMiwwLDAsMCwxLjktMi4yMSw3LjMxLDcuMzEsMCwwLDAsLjY3LTMuMjEsNy40Nyw3LjQ3LDAsMCwwLS42Ni0zLjIsNS4xNiw1LjE2LDAsMCwwLTQuODUtMyw1LjExLDUuMTEsMCwwLDAtMi45NC44Myw1LjI3LDUuMjcsMCwwLDAtMS45LDIuMjEsNy4yOCw3LjI4LDAsMCwwLS42NywzLjIxLDcuNDcsNy40NywwLDAsMCwuNjYsMy4yLDUuMTMsNS4xMywwLDAsMCwxLjkyLDIuMjUsNS4zNSw1LjM1LDAsMCwwLDIuOTMuNzlBNS4xMSw1LjExLDAsMCwwLDQxMS43OSwxNTNaIi8+PHBhdGggY2xhc3M9ImNscy0xIiBkPSJNNDI3LjE2LDE1NS40NGExLjgyLDEuODIsMCwwLDEtLjUtLjc4bC00LjE3LTEzLjc3YTIuMTUsMi4xNSwwLDAsMS0uMDYtLjQ0LDEsMSwwLDAsMSwuMjctLjcsMSwxLDAsMCwxLC42OS0uMjguOTIuOTIsMCwwLDEsLjYuMjMsMS4yNiwxLjI2LDAsMCwxLC4zOC42MmwzLjQsMTJjMCwuMTMuMDkuMTkuMTUuMTlzLjExLS4wNi4xNS0uMTlsMy40My0xMmExLjE2LDEuMTYsMCwwLDEsLjQyLS42NSwxLjE0LDEuMTQsMCwwLDEsLjctLjI0LDEuMTYsMS4xNiwwLDAsMSwxLjEzLjg5bDMuNDMsMTJjMCwuMTMuMDkuMTkuMTUuMTlzLjEtLjA2LjE1LS4xOWwzLjQtMTJhMS4xOSwxLjE5LDAsMCwxLC4zOC0uNjIuOS45LDAsMCwxLC42LS4yMy45NC45NCwwLDAsMSwuNjguMjgsMSwxLDAsMCwxLC4yOC43LDIuMTUsMi4xNSwwLDAsMS0uMDYuNDRsLTQuMTgsMTMuNzdhMS43MywxLjczLDAsMCwxLS41Ljc4LDEuMjIsMS4yMiwwLDAsMS0xLjU3LDAsMS40NCwxLjQ0LDAsMCwxLS40OC0uNzVsLTMuMjYtMTEuMDdjMC0uMTMtLjA5LS4xOS0uMTUtLjE5cy0uMS4wNi0uMTQuMTlsLTMuMjYsMTEuMDdhMS41NywxLjU3LDAsMCwxLS40OC43NSwxLjIxLDEuMjEsMCwwLDEtLjguM0ExLjE5LDEuMTksMCwwLDEsNDI3LjE2LDE1NS40NFoiLz48cGF0aCBjbGFzcz0iY2xzLTEiIGQ9Ik00NTAuMDYsMTU1LjRhMS4wNSwxLjA1LDAsMCwxLS4yOC0uNzRWMTQxYTEuNTYsMS41NiwwLDAsMSwuNDEtMS4wNywxLjI5LDEuMjksMCwwLDEsMS0uNDZoLjI4YTEuNDcsMS40NywwLDAsMSwxLjE5LjY5bDcuODUsMTIuMTljLjA4LjA5LjEzLjEzLjE3LjEzYS4xMi4xMiwwLDAsMCwuMDktLjA2LjI5LjI5LDAsMCwwLDAtLjE2VjE0MC41NGExLjEsMS4xLDAsMCwxLC4yOS0uNzUuOS45LDAsMCwxLC42OS0uMzIsMSwxLDAsMCwxLC43MS4zMiwxLjEsMS4xLDAsMCwxLC4yOS43NVYxNTQuMmExLjQ4LDEuNDgsMCwwLDEtLjQyLDEuMDYsMS4zNSwxLjM1LDAsMCwxLTEsLjQ1aC0uMjZhMS4zNywxLjM3LDAsMCwxLS42NS0uMTcsMS41NCwxLjU0LDAsMCwxLS41LS40NWwtNy45LTEyLjI2Yy0uMDctLjA5LS4xMi0uMTMtLjE3LS4xM3MtLjA1LDAtLjA4LjA2YS4yOS4yOSwwLDAsMCwwLC4xNnYxMS43NGExLDEsMCwwLDEtLjMuNzQuOTUuOTUsMCwwLDEtMS40LDBaIi8+PHBhdGggY2xhc3M9ImNscy0xIiBkPSJNMTAxLDEzNy4ybDQuMDgtMTguMjgsNC4wOSwxOC4yOGE0LjE5LDQuMTksMCwxLDEtOC4xNywwWiIvPjxwYXRoIGNsYXNzPSJjbHMtMSIgZD0iTTg3LjUyLDEzMy43Nmw5LjEtMTMuNTEtMy4xOCwxNmEzLjI3LDMuMjcsMCwxLDEtNS45Mi0yLjQ3WiIvPjxwYXRoIGNsYXNzPSJjbHMtMSIgZD0iTTExNi42NiwxMzYuMjNsLTMuMTgtMTYsOS4xMSwxMy41MWMyLjYzLDQuNTEtNC41OCw3LjUxLTUuOTMsMi40N1oiLz48cGF0aCBjbGFzcz0iY2xzLTEiIGQ9Ik0xMzcuNjMsMTMxLjczYTI2LjQxLDI2LjQxLDAsMCwwLTUuNTgtNC4zMmMtMS4wNS0uNjMsMi4yLDQuMDUsMi42Myw5LjQ4YTYuMjUsNi4yNSwwLDAsMS0uNjgsMy43LDUuODMsNS44MywwLDAsMS0zLjYzLDIuNSw4LjUyLDguNTIsMCwwLDEtMy44OSwwQTYuMTEsNi4xMSwwLDAsMSwxMjQuMSwxNDJjLTEsNC00LjE2LDcuMTEtOC4zMyw4Ljc0YTI5LjY2LDI5LjY2LDAsMCwxLTExLjE1LDEuNjcsMzAuMTEsMzAuMTEsMCwwLDEtOS45My0xLjUzYy00LjM1LTEuNTktNy42Mi00LjczLTguNjgtOC44OGE2LjExLDYuMTEsMCwwLDEtMi4zOCwxLjA5LDguNTIsOC41MiwwLDAsMS0zLjg5LDAsNS44Myw1LjgzLDAsMCwxLTMuNjMtMi41LDYuMjUsNi4yNSwwLDAsMS0uNjgtMy43Yy40Mi01LjQzLDMuNjctMTAuMTEsMi42Mi05LjQ4YTI2LjkzLDI2LjkzLDAsMCwwLTUuNTgsNC4zMmMtMy4wOCwzLjIyLTQuODQsNy42MS0zLjM4LDExLjgyLDEuNzYsNS4xLDcuNjEsNy41NSwxMy4yMiw2LjU4LDQuODIsNi44NCwxNCwxMC4zNiwyMi43NCwxMC4zM1MxMjMsMTU3LDEyNy43OSwxNTAuMTNjNS42MSwxLDExLjQ2LTEuNDgsMTMuMjMtNi41OEMxNDIuNDgsMTM5LjM0LDE0MC43MiwxMzUsMTM3LjYzLDEzMS43M1oiLz48cmVjdCBjbGFzcz0iY2xzLTEiIHg9IjMyLjg3IiB5PSIxMDMuMjEiIHdpZHRoPSI5OS4wNyIgaGVpZ2h0PSI4LjQ5IiB0cmFuc2Zvcm09InRyYW5zbGF0ZSgtNTEuODQgODkuNzQpIHJvdGF0ZSgtNDUpIi8+PHJlY3QgY2xhc3M9ImNscy0xIiB4PSI5MS42MiIgeT0iNzAuNzMiIHdpZHRoPSI3LjIiIGhlaWdodD0iOC40OSIgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoODAuOSAtNDUuMzcpIHJvdGF0ZSg0NSkiLz48cmVjdCBjbGFzcz0iY2xzLTEiIHg9IjEwMS45MiIgeT0iMTEzLjAyIiB3aWR0aD0iNzEuMTciIGhlaWdodD0iOC40OSIgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoMTIzLjE5IC02Mi44OSkgcm90YXRlKDQ1KSIvPjxwYXRoIGNsYXNzPSJjbHMtMiIgZD0iTTEwNS4wNSwyMi4zNmE3MC42MSw3MC42MSwwLDAsMC02MCwxMDcuODdMOTAuNDcsODQuODFsLTkuMzgtOS4zOUw5NS42Nyw2MC44NGw5LjM4LDkuMzgsOS4zOS05LjM4TDEyOSw3NS40MmwtOS4zOSw5LjM5LDQ1LjQzLDQ1LjQyYTcwLjYyLDcwLjYyLDAsMCwwLTYwLTEwNy44N1ptMCwzMC40NmE4LjA5LDguMDksMCwxLDEsOC4wOS04LjA4QTguMDgsOC4wOCwwLDAsMSwxMDUuMDUsNTIuODJaIi8+PC9zdmc+" alt="漁人町"></div>
+    <div class="top-user">
+      <div>
+        <div class="top-name" id="topName">員工</div>
+        <div class="top-company" id="topCompany">—</div>
+      </div>
+      <div class="top-avatar" id="topAvatar">E</div>
+      <button class="logout-btn" onclick="handleLogout()">登出</button>
+    </div>
+  </div>
+  <div class="nav-tabs">
+    <div class="nav-tab active" onclick="showTab('home')" id="tab-home">🏠 我的工作台</div>
+    <div class="nav-tab" onclick="showTab('schedule')" id="tab-schedule">📅 我的班表</div>
+    <div class="nav-tab" onclick="showTab('leave')" id="tab-leave">🗓 申請假別</div>
+    <div class="nav-tab" onclick="showTab('payroll')" id="tab-payroll">💰 薪資查詢</div>
+  </div>
+  <div class="content" id="contentArea"></div>
+</div>
+<div class="toast" id="toast"></div>
+<script>
+const URL_SB='https://lgxvfpgxpigmsgfugegl.supabase.co';
+const KEY_SB='sb_publishable_tm1h43HAkhQxjuoc-M3rQw_1kWI3b5Y';
+const{createClient}=supabase;
+const db=createClient(URL_SB,KEY_SB);
+let currentUser=null,currentEmp=null;
+
+async function init(){
+  const{data:{session}}=await db.auth.getSession();
+  if(!session){window.location.href='index.html';return;}
+  currentUser=session.user;
+  const{data:emp}=await db.from('employees').select('*,companies(name,short_name)').eq('user_id',currentUser.id).single();
+  if(!emp){window.location.href='index.html';return;}
+  if(emp.role==='admin'){window.location.href='dashboard.html';return;}
+  currentEmp=emp;
+  document.getElementById('topName').textContent=emp.name;
+  document.getElementById('topCompany').textContent=emp.companies?.short_name||'';
+  document.getElementById('topAvatar').textContent=emp.name[0];
+  document.getElementById('loading').style.display='none';
+  document.getElementById('app').style.display='block';
+  showTab('home');
+}
+
+function showTab(tab){
+  document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('tab-'+tab)?.classList.add('active');
+  if(tab==='home')renderHome();
+  else if(tab==='schedule')renderSchedule();
+  else if(tab==='leave')renderLeave();
+  else if(tab==='payroll')renderPayroll();
+}
+
+async function renderHome(){
+  const el=document.getElementById('contentArea');
+  const{data:leaves}=await db.from('leave_requests').select('*').eq('employee_id',currentEmp.id).order('created_at',{ascending:false}).limit(5);
+  const pending=(leaves||[]).filter(l=>l.status==='pending').length;
+  const approved=(leaves||[]).filter(l=>l.status==='approved').length;
+  const now=new Date();
+  const gr=now.getHours()<12?'早安':now.getHours()<18?'午安':'晚安';
+  el.innerHTML=`
+    <div class="welcome-card">
+      <div class="welcome-greeting">${gr}，${currentEmp.name} 👋</div>
+      <div class="welcome-sub">${currentEmp.companies?.name} · ${now.getFullYear()-1911}年${now.getMonth()+1}月${now.getDate()}日</div>
+      <div class="welcome-stats">
+        <div class="welcome-stat"><div class="welcome-stat-val">${pending}</div><div class="welcome-stat-label">待審假別</div></div>
+        <div class="welcome-stat"><div class="welcome-stat-val">${approved}</div><div class="welcome-stat-label">已核准假別</div></div>
+        <div class="welcome-stat"><div class="welcome-stat-val">${currentEmp.monthly_salary?'NT$'+Number(currentEmp.monthly_salary).toLocaleString():'—'}</div><div class="welcome-stat-label">月薪</div></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header"><span class="card-title">近期假別紀錄</span>
+        <button style="font-size:11px;padding:5px 10px;border:1px solid var(--border);border-radius:6px;background:transparent;cursor:pointer;color:var(--muted)" onclick="showTab('leave')">申請假別</button>
+      </div>
+      ${renderLeaveTable(leaves||[])}
+    </div>`;
+}
+
+async function renderSchedule(){
+  const el=document.getElementById('contentArea');
+  el.innerHTML='<div class="empty"><div class="spinner" style="margin:auto"></div></div>';
+  const today=new Date();const day=today.getDay()||7;
+  const monday=new Date(today);monday.setDate(today.getDate()-day+1);
+  const wk=Array.from({length:7},(_,i)=>{const d=new Date(monday);d.setDate(monday.getDate()+i);return d;});
+  const s0=wk[0].toISOString().split('T')[0],s6=wk[6].toISOString().split('T')[0];
+  const{data:sc}=await db.from('schedules').select('*').eq('employee_id',currentEmp.id).gte('work_date',s0).lte('work_date',s6);
+  const sm={};(sc||[]).forEach(s=>{sm[s.work_date]=s;});
+  const dn=['一','二','三','四','五','六','日'];
+  const sl={full:'全天',am:'早班',pm:'晚班',off:'休假',holiday:'國定'};
+  const cls={full:'shift-full',am:'shift-am',pm:'shift-pm',off:'shift-off',holiday:'shift-holiday'};
+  el.innerHTML=`
+    <div class="card">
+      <div class="card-header"><span class="card-title">本週班表</span>
+        <span style="font-size:12px;color:var(--muted)">${wk[0].getMonth()+1}/${wk[0].getDate()} – ${wk[6].getMonth()+1}/${wk[6].getDate()}</span></div>
+      <div class="week-grid">
+        ${wk.map((d,i)=>{
+          const ds=d.toISOString().split('T')[0];const s=sm[ds];
+          const isToday=ds===today.toISOString().split('T')[0];const isWeekend=i>=5;
+          return`<div class="day-cell ${isToday?'today':''} ${isWeekend?'weekend':''}">
+            <div class="day-name">週${dn[i]}</div>
+            <div class="day-date">${d.getMonth()+1}/${d.getDate()}</div>
+            ${s?`<div class="day-shift ${cls[s.shift_type]||'shift-off'}">${sl[s.shift_type]||s.shift_type}</div>`:`<div class="shift-none">—</div>`}
+          </div>`;}).join('')}
+      </div>
+    </div>`;
+}
+
+async function renderLeave(){
+  const el=document.getElementById('contentArea');
+  const{data:myLeaves}=await db.from('leave_requests').select('*').eq('employee_id',currentEmp.id).order('created_at',{ascending:false});
+  const today=new Date().toISOString().split('T')[0];
+  el.innerHTML=`
+    <div class="card">
+      <div class="card-header"><span class="card-title">申請假別</span></div>
+      <div class="leave-form">
+        <div class="form-grid">
+          <div class="form-row"><label>假別類型</label>
+            <select id="leaveType"><option value="特休">特休</option><option value="病假">病假</option><option value="事假">事假</option><option value="補休">補休</option><option value="補班">補班</option></select></div>
+          <div class="form-row"><label>天數</label><input type="number" id="leaveDays" min="0.5" max="30" step="0.5" value="1"></div>
+        </div>
+        <div class="form-grid">
+          <div class="form-row"><label>開始日期</label><input type="date" id="leaveStart" value="${today}"></div>
+          <div class="form-row"><label>結束日期</label><input type="date" id="leaveEnd" value="${today}"></div>
+        </div>
+        <div class="form-row"><label>申請原因</label><textarea id="leaveReason" rows="2" placeholder="選填"></textarea></div>
+        <button class="btn btn-primary" id="leaveBtn" onclick="submitLeave()">送出申請</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header"><span class="card-title">我的假別記錄</span></div>
+      ${renderLeaveTable(myLeaves||[])}
+    </div>`;
+}
+
+async function submitLeave(){
+  const type=document.getElementById('leaveType').value;
+  const start=document.getElementById('leaveStart').value;
+  const end=document.getElementById('leaveEnd').value;
+  const days=parseFloat(document.getElementById('leaveDays').value);
+  const reason=document.getElementById('leaveReason').value;
+  const btn=document.getElementById('leaveBtn');
+  if(!start||!end||!days){showToast('請填寫完整資訊','error');return;}
+  if(start>end){showToast('結束日期不能早於開始日期','error');return;}
+  btn.disabled=true;btn.textContent='送出中...';
+  const{error}=await db.from('leave_requests').insert({employee_id:currentEmp.id,company_id:currentEmp.company_id,leave_type:type,start_date:start,end_date:end,days,reason:reason||null,status:'pending'});
+  btn.disabled=false;btn.textContent='送出申請';
+  if(error){showToast('送出失敗：'+error.message,'error');return;}
+  showToast('假別申請已送出，等待審核');renderLeave();
+}
+
+async function renderPayroll(){
+  const el=document.getElementById('contentArea');
+  const{data:records}=await db.from('payroll_records').select('*').eq('employee_id',currentEmp.id).order('year',{ascending:false}).order('month',{ascending:false});
+  el.innerHTML=`
+    <div class="card">
+      <div class="card-header"><span class="card-title">薪資資訊</span></div>
+      <div style="padding:18px">
+        <div class="pay-line"><span>基本月薪</span><span>${currentEmp.monthly_salary?'NT$ '+Number(currentEmp.monthly_salary).toLocaleString():'請聯絡管理者設定'}</span></div>
+        <div class="pay-line"><span>到職日</span><span>${currentEmp.hire_date||'—'}</span></div>
+        <div class="pay-line"><span>公司</span><span>${currentEmp.companies?.name}</span></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header"><span class="card-title">薪資單記錄</span></div>
+      ${!records||records.length===0?'<div class="empty"><div class="empty-icon">💰</div>尚無薪資單記錄</div>':
+      `<table class="leave-table"><thead><tr><th>年月</th><th>實際時數</th><th>加班時數</th><th>應發薪資</th><th>狀態</th></tr></thead><tbody>
+        ${records.map(r=>`<tr>
+          <td>${r.year}年${r.month}月</td><td>${r.actual_hours||'—'} h</td><td>${r.overtime_hours||0} h</td>
+          <td>${r.net_pay?'NT$ '+Number(r.net_pay).toLocaleString():'—'}</td>
+          <td><span class="status-pill ${r.status==='paid'?'s-approved':'s-pending'}">${r.status==='paid'?'已發放':'待確認'}</span></td>
+        </tr>`).join('')}
+      </tbody></table>`}
+    </div>`;
+}
+
+function renderLeaveTable(leaves){
+  if(!leaves||leaves.length===0)return'<div class="empty"><div class="empty-icon">📋</div>尚無記錄</div>';
+  const sm={pending:['s-pending','dot-pending','待審核'],approved:['s-approved','dot-approved','已核准'],rejected:['s-rejected','dot-pending','已拒絕']};
+  return`<table class="leave-table"><thead><tr><th>假別</th><th>日期</th><th>天數</th><th>原因</th><th>狀態</th></tr></thead><tbody>
+    ${leaves.map(l=>{const[cls,dc,label]=sm[l.status]||sm.pending;
+      return`<tr><td><strong>${l.leave_type}</strong></td>
+        <td>${l.start_date}${l.start_date!==l.end_date?' ~ '+l.end_date:''}</td>
+        <td>${l.days}天</td><td style="color:var(--muted)">${l.reason||'—'}</td>
+        <td><span class="status-pill ${cls}"><span class="dot ${dc}"></span>${label}</span></td>
+      </tr>`;}).join('')}
+  </tbody></table>`;
+}
+
+function showToast(msg,type='success'){const t=document.getElementById('toast');t.textContent=msg;t.className=`toast toast-${type} show`;setTimeout(()=>t.classList.remove('show'),3000);}
+async function handleLogout(){await db.auth.signOut();window.location.href='index.html';}
+init();
+</script>
+</body>
+</html>
