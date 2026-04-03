@@ -499,10 +499,39 @@ async function saveEmployee(){
   const hireDate=document.getElementById('empHire').value;
   const role=document.getElementById('empRole').value;
   if(!name||!email||!password){showToast('請填寫必要欄位','error');return;}
+
+  // 檢查 email 是否已在員工列表
+  const{data:existing}=await db.from('employees').select('id').eq('email',email).single();
+  if(existing){showToast('此 Email 已有員工帳號，請換一個','error');return;}
+
+  // Step 1：先建立員工資料（不含 user_id）
+  const{data:empData,error:empErr}=await db.from('employees').insert({
+    name,email,company_id:companyId,
+    monthly_salary:salary||null,
+    hire_date:hireDate||null,
+    role,is_active:true
+  }).select().single();
+  if(empErr){showToast('建立員工資料失敗：'+empErr.message,'error');return;}
+
+  // Step 2：建立 Auth 登入帳號
   const{data:authData,error:authErr}=await db.auth.signUp({email,password});
-  if(authErr){showToast('建立帳號失敗：'+authErr.message,'error');return;}
-  await db.from('employees').insert({user_id:authData.user?.id,name,email,company_id:companyId,monthly_salary:salary||null,hire_date:hireDate||null,role,is_active:true});
-  closeModal('empModal');showToast(`${name} 的帳號已建立`);
+
+  if(authErr){
+    // Auth 建立失敗也沒關係，員工資料已存在，之後可補
+    showToast(`${name} 資料已建立，但登入帳號設定失敗，請在 Supabase Auth 手動建立`,'error');
+    closeModal('empModal');
+    await loadEmployees();renderEmployees();
+    return;
+  }
+
+  // Step 3：更新 user_id
+  const userId=authData.user?.id;
+  if(userId){
+    await db.from('employees').update({user_id:userId}).eq('id',empData.id);
+  }
+
+  closeModal('empModal');
+  showToast(`${name} 的帳號已建立 ✅`);
   await loadEmployees();renderEmployees();
 }
 
